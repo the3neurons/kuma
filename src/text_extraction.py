@@ -2,17 +2,17 @@ import boto3
 import json
 from typing import Any
 
-# document_name: str = f"../conversations-examples/{application}.png"
-#
-# with open(document_name, 'rb') as document:
-#     image_bytes: bytearray = bytearray(document.read())
-#
-# textract = boto3.client('textract')
-# response = textract.detect_document_text(Document={'Bytes': image_bytes})
-# with open(f"../conversations-examples/{application}.json", "w") as file:
-#     json.dump(response, file)
+
+# TODO: docstring & AWS credentials from .env
+def extract_text_from_image(image_path: str) -> dict[str, Any]:
+    with open(image_path, 'rb') as document:
+        image_bytes: bytearray = bytearray(document.read())
+
+    textract = boto3.client('textract')
+    return textract.detect_document_text(Document={'Bytes': image_bytes})
 
 
+# TODO: discord
 def differentiate_senders(textract_response: dict[str, Any]) -> str:
     """
     Labels each text line by sender ("User" or "Other") based on the horizontal position.
@@ -36,17 +36,6 @@ def differentiate_senders(textract_response: dict[str, Any]) -> str:
     -------
     str
         Formatted conversation with sender labels and messages.
-
-    Example
-    -------
-    >>> response = textract.detect_document_text(...)
-    >>> print(differentiate_senders(response))
-    User:
-    Hello there!
-    How are you?
-
-    Other:
-    I'm doing great!
     """
     conversation_lines: list[str] = []
     current_sender: str | None = None  # Tracks "User" or "Other"
@@ -75,10 +64,32 @@ def differentiate_senders(textract_response: dict[str, Any]) -> str:
     return "\n".join(conversation_lines)
 
 
-# TODO: discord
+# TODO: raise when wrong file
+def extract_conversation(file_path: str) -> str:
+    """
+    Extracts conversation from either an image file or pre-processed JSON.
 
-application: str = "imessage"
-with open(f"../conversations-examples/{application}.json", "r") as file:
-    response: dict[str, Any] = json.load(file)
+    Parameters
+    ----------
+    file_path : str
+        Path to a messaging screenshot image or to a pre-extracted AWS Textract JSON file.
 
-print(differentiate_senders(response))
+    Returns
+    -------
+    str
+        Formatted conversation with sender labels and messages.
+    """
+    file_extension: str = file_path.split(".")[-1]
+    if file_extension == "json":
+        with open(file_path, "r") as file:
+            conversation_data: dict[str, Any] = json.load(file)
+
+    else:
+        conversation_data: dict[str, Any] = extract_text_from_image(file_path)
+
+    return differentiate_senders(conversation_data)
+
+
+if __name__ == "__main__":
+    application: str = "imessage"
+    print(extract_conversation(f"../conversations-examples/{application}.json"))
