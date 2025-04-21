@@ -13,7 +13,7 @@ from typing import Any
 #     json.dump(response, file)
 
 
-def differentiate_senders(textract_response) -> str:
+def differentiate_senders(textract_response: dict[str, Any]) -> str:
     """
     Labels each text line by sender ("User" or "Other") based on the horizontal position.
 
@@ -28,7 +28,7 @@ def differentiate_senders(textract_response) -> str:
 
     Parameters
     ----------
-    textract_response : dict
+    textract_response : dict[str, Any]
         AWS Textract response dictionary from detect_document_text API call.
         Expected structure: Contains 'Blocks' with 'BlockType' 'LINE' entries.
 
