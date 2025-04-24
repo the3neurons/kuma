@@ -1,14 +1,24 @@
 import boto3
 import json
+import os
 from typing import Any
+from dotenv import load_dotenv
 
 
 # TODO: docstring & AWS credentials from .env
 def extract_text_from_image(image_path: str) -> dict[str, Any]:
+    load_dotenv()
+
     with open(image_path, 'rb') as document:
         image_bytes: bytearray = bytearray(document.read())
 
-    textract = boto3.client('textract')
+    textract = boto3.client(
+        service_name='textract',
+        region_name=os.getenv("AWS_REGION_NAME"),
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
+    )
+
     return textract.detect_document_text(Document={'Bytes': image_bytes})
 
 
