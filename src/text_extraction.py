@@ -42,9 +42,11 @@ def extract_text_from_image(image_path: str) -> dict[str, Any]:
 # TODO: discord
 def differentiate_senders(textract_response: dict[str, Any]) -> str:
     """
-    Labels each text line by sender ("User" or "Other") based on the horizontal position.
+    Labels each text line by sender ("User" or "Other") based on the horizontal
+    position.
 
-    Processes AWS Textract response to group text lines into messages from either:
+    Processes AWS Textract response to group text lines into messages from
+    either:
     - "User" (right-aligned, typically current user)
     - "Other" (left-aligned, typically other participant)
 
@@ -99,7 +101,8 @@ def extract_conversation(file_path: str) -> str:
     Parameters
     ----------
     file_path : str
-        Path to a messaging screenshot image or to a pre-extracted AWS Textract JSON file.
+        Path to a messaging screenshot image or to a pre-extracted AWS Textract
+        JSON file.
 
     Returns
     -------
