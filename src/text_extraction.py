@@ -5,8 +5,25 @@ from typing import Any
 from dotenv import load_dotenv
 
 
-# TODO: docstring & AWS credentials from .env
 def extract_text_from_image(image_path: str) -> dict[str, Any]:
+    """
+    Get the AWS Textract response dictionary containing the text and the
+    position of it in the image.
+
+    AWS API credentials must be defined, either in your local AWS configuration
+    or in your environment variables. Environment variables names are
+    `REGION_NAME`, `AWS_ACCESS_KEY_ID` an `AWS_SECRET_ACCESS_KEY`.
+
+    Parameters
+    ----------
+    image_path: str
+        Path to the image.
+
+    Returns
+    -------
+    dict[str, Any]
+        The AWS Textract response dictionary.
+    """
     load_dotenv()
 
     with open(image_path, 'rb') as document:
