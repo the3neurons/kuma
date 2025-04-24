@@ -93,7 +93,6 @@ def differentiate_senders(textract_response: dict[str, Any]) -> str:
     return "\n".join(conversation_lines)
 
 
-# TODO: raise when wrong file
 def extract_conversation(file_path: str) -> str:
     """
     Extracts conversation from either an image file or pre-processed JSON.
@@ -108,18 +107,33 @@ def extract_conversation(file_path: str) -> str:
     -------
     str
         Formatted conversation with sender labels and messages.
+
+    Raises
+    ------
+    FileNotFoundError
+        Given file path doesn't exist.
+    ValueError
+        Give file is in the wrong format.
     """
-    file_extension: str = file_path.split(".")[-1]
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"{file_path} doesn't exist.")
+
+    accepted_image_formats: list[str] = ["png", "jpeg", "jpg", "pdf", "tiff"]
+    file_extension: str = file_path.split(".")[-1].lower()
+
     if file_extension == "json":
         with open(file_path, "r") as file:
             conversation_data: dict[str, Any] = json.load(file)
 
-    else:
+    elif file_extension in accepted_image_formats:
         conversation_data: dict[str, Any] = extract_text_from_image(file_path)
+
+    else:
+        raise ValueError("Wrong file format.")
 
     return differentiate_senders(conversation_data)
 
 
 if __name__ == "__main__":
-    application: str = "imessage"
+    application: str = "whatsapp"
     print(extract_conversation(f"../conversations-examples/{application}.json"))
