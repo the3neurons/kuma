@@ -87,8 +87,9 @@ def differentiate_senders(textract_response: dict[str, Any]) -> str:
 
                 conversation_lines.append(f"{sender}:")
                 current_sender = sender
-
-            conversation_lines.append(text)
+                conversation_lines.append(text)
+            else:
+                conversation_lines[-1] = conversation_lines[-1] + " " + text
 
     return "\n".join(conversation_lines)
 
