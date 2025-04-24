@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "AI agent recommending answers to messages depending on the conversation history, the person and the mood the user chooses."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "boto3>=1.37.34",
+    "dotenv>=0.9.9",
+    "scikit-learn>=1.6.1",
+]
 
 [dependency-groups]
 dev = [
