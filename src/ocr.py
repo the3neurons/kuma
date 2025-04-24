@@ -3,6 +3,7 @@ import json
 import os
 from typing import Any
 from dotenv import load_dotenv
+import re
 
 
 def extract_text_from_image(image_path: str) -> dict[str, Any]:
@@ -88,10 +89,18 @@ def differentiate_senders(textract_response: dict[str, Any]) -> str:
                 conversation_lines.append(f"{sender}:")
                 current_sender = sender
                 conversation_lines.append(text)
+
+            # Add the text without a newline when it's from the same sender
             else:
                 conversation_lines[-1] = conversation_lines[-1] + " " + text
 
     return "\n".join(conversation_lines)
+
+
+def is_metadata(text: str) -> re.Match[str]:
+    whatsapp_encryption_msg: str = "Messages and calls are end-to-end encrypted. Only people in this chat can read, listen to, or share them. Learn more"
+    time_stamp_pattern: str = r"\b([1-9]|0[1-9]|1[0-9]|2[0-3]):[0-5][0-9](\s*([AP][Mm]|[ap]m))?\b"
+    return text == whatsapp_encryption_msg or re.search(time_stamp_pattern, text) is not None
 
 
 def extract_conversation(file_path: str) -> str:
@@ -136,5 +145,34 @@ def extract_conversation(file_path: str) -> str:
 
 
 if __name__ == "__main__":
-    application: str = "whatsapp"
-    print(extract_conversation(f"../conversations-examples/{application}.json"))
+    # Test conversation extraction
+    # application: str = "whatsapp"
+    # print(extract_conversation(f"../conversations-examples/{application}.json"))
+
+    # Test metadata extraction
+    print("Is metadata?\n")
+
+    whatsapp_encryption_msg: str = "Messages and calls are end-to-end encrypted. Only people in this chat can read, listen to, or share them. Learn more"
+    timestamp_1: str = "11:59"
+    timestamp_2: str = "11:59am"
+    timestamp_3: str = "11:59 PM"
+    not_metadata: str = "Hello! How are you?"
+
+    print(whatsapp_encryption_msg)
+    print(is_metadata(whatsapp_encryption_msg))
+    print()
+
+    print(timestamp_1)
+    print(is_metadata(timestamp_1))
+    print()
+
+    print(timestamp_2)
+    print(is_metadata(timestamp_2))
+    print()
+
+    print(timestamp_3)
+    print(is_metadata(timestamp_3))
+    print()
+
+    print(not_metadata)
+    print(is_metadata(not_metadata))
