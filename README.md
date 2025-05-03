@@ -21,7 +21,7 @@ the person and the mood the user chooses.
 4. Install the pre-commit hook:
 
    ```bash
-   uv run pre-commit install
+   uv run pre-commit install --hook-type commit-msg
    ```
 
 You're good to go!
