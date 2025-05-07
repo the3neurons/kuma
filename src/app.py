@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from ocr import extract_conversation
+from answer import get_answers
 
 st.set_page_config(page_title="Kuma", layout="centered")
 
@@ -18,7 +19,7 @@ if uploaded_file:
     st.image(image, width=256)
 
     emotion: str = st.selectbox(
-        "Quelle emotion devrait être la réponse ?",
+        "De quelle émotion devrait être la réponse ?",
         (
             "Comme le sentiment de la conversation",
             "Séduisante",
@@ -32,5 +33,6 @@ if uploaded_file:
     if st.button("Générer des réponses"):
         conversation: str = extract_conversation(image)
 
-        # TODO: display generated answers
-        st.text(conversation)
+        answers: list[str] = get_answers(conversation, emotion)
+        for answer in answers:
+            st.text(answer)
