@@ -118,7 +118,7 @@ def extract_conversation(file_path: str) -> str:
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"{file_path} doesn't exist.")
 
-    accepted_image_formats: list[str] = ["png", "jpeg", "jpg", "pdf", "tiff"]
+    accepted_image_formats: list[str] = ["png", "jpeg", "jpg"]
     file_extension: str = file_path.split(".")[-1].lower()
 
     if file_extension == "json":
