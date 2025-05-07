@@ -5,7 +5,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 
-def extract_text_from_image(image_path: str) -> dict[str, Any]:
+def extract_text_from_image(image: str | bytes) -> dict[str, Any]:
     """
     Get the AWS Textract response dictionary containing the text and the
     position of it in the image.
@@ -16,8 +16,8 @@ def extract_text_from_image(image_path: str) -> dict[str, Any]:
 
     Parameters
     ----------
-    image_path: str
-        Path to the image.
+    image: str | bytes
+        Path to the image or image bytes.
 
     Returns
     -------
@@ -26,8 +26,9 @@ def extract_text_from_image(image_path: str) -> dict[str, Any]:
     """
     load_dotenv()
 
-    with open(image_path, "rb") as document:
-        image_bytes: bytearray = bytearray(document.read())
+    if isinstance(image, str):
+        with open(image, "rb") as document:
+            image: bytes = document.read()
 
     textract = boto3.client(
         service_name="textract",
@@ -36,7 +37,7 @@ def extract_text_from_image(image_path: str) -> dict[str, Any]:
         aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     )
 
-    return textract.detect_document_text(Document={"Bytes": image_bytes})
+    return textract.detect_document_text(Document={"Bytes": image})
 
 
 # TODO: discord
@@ -93,15 +94,15 @@ def differentiate_senders(textract_response: dict[str, Any]) -> str:
     return "\n".join(conversation_lines)
 
 
-def extract_conversation(file_path: str) -> str:
+def extract_conversation(file: str | bytes) -> str:
     """
     Extracts conversation from either an image file or pre-processed JSON.
 
     Parameters
     ----------
-    file_path : str
+    file : str | bytes
         Path to a messaging screenshot image or to a pre-extracted AWS Textract
-        JSON file.
+        JSON file, or the image bytes.
 
     Returns
     -------
@@ -115,25 +116,28 @@ def extract_conversation(file_path: str) -> str:
     ValueError
         Give file is in the wrong format.
     """
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"{file_path} doesn't exist.")
+    if isinstance(file, str):
+        if not os.path.exists(file):
+            raise FileNotFoundError(f"{file} doesn't exist.")
 
-    accepted_image_formats: list[str] = ["png", "jpeg", "jpg", "pdf", "tiff"]
-    file_extension: str = file_path.split(".")[-1].lower()
+        accepted_image_formats: list[str] = ["png", "jpeg", "jpg"]
+        file_extension: str = file.split(".")[-1].lower()
 
-    if file_extension == "json":
-        with open(file_path, "r") as file:
-            conversation_data: dict[str, Any] = json.load(file)
+        if file_extension == "json":
+            with open(file, "r") as file:
+                conversation_data: dict[str, Any] = json.load(file)
 
-    elif file_extension in accepted_image_formats:
-        conversation_data: dict[str, Any] = extract_text_from_image(file_path)
+        elif file_extension in accepted_image_formats:
+            conversation_data: dict[str, Any] = extract_text_from_image(file)
 
+        else:
+            raise ValueError("Wrong file format.")
     else:
-        raise ValueError("Wrong file format.")
+        conversation_data: dict[str, Any] = extract_text_from_image(file)
 
     return differentiate_senders(conversation_data)
 
 
 if __name__ == "__main__":
     application: str = "imessage"
-    print(extract_conversation(f"../conversations-examples/{application}.json"))
+    print(extract_conversation(f"../conversations-examples/{application}.png"))

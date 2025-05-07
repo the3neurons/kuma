@@ -8,6 +8,7 @@ dependencies = [
     "boto3>=1.37.34",
     "dotenv>=0.9.9",
     "scikit-learn>=1.6.1",
+    "streamlit>=1.45.0",
 ]
 
 [dependency-groups]
