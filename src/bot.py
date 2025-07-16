@@ -132,7 +132,6 @@ tree = bot.tree
 @bot.event
 async def on_ready():
     await tree.sync()
-    print(f"Connecté en tant que {bot.user}")
     print(f"Connected as {bot.user}")
 
 
