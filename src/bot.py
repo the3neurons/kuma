@@ -192,9 +192,9 @@ async def get_last_messages(interaction: discord.Interaction, nombre: int):
             gif_url = await get_tenor_gif_url(tenor_link)
             if gif_url:
                 desc = await describe_image_blip(gif_url)
-                content += f"\n[Tenor GIF] {tenor_link}\n🖼️ Description: {desc}"
+                content += f"\n[Tenor GIF] {tenor_link}\nDescription: {desc}"
             else:
-                content += f"\n[Tenor GIF] {tenor_link}\n🖼️ Description: unable to retrieve GIF."
+                content += f"\n[Tenor GIF] {tenor_link}\nDescription: unable to retrieve GIF."
 
         # Handle attachments
         if msg.attachments:
@@ -205,12 +205,12 @@ async def get_last_messages(interaction: discord.Interaction, nombre: int):
                     transcription = await transcribe_audio_attachment(
                         att.url, att.filename
                     )
-                    content += f"\n[Vocal] {att.filename}: {att.url}\n📝 Transcription: {transcription}"
+                    content += f"\n[Vocal] {att.filename}: {att.url}\nTranscription: {transcription}"
 
                 elif filename.endswith((".png", ".jpg", ".jpeg", ".gif")):
                     # Image/GIF description
                     description = await describe_image_blip(att.url)
-                    content += f"\n[Image/GIF] {att.filename}: {att.url}\n🖼️ Description: {description}"
+                    content += f"\n[Image/GIF] {att.filename}: {att.url}\nDescription: {description}"
 
                 else:
                     content += f"\n[File] {att.filename}: {att.url}"
