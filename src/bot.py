@@ -1,9 +1,29 @@
-import discord
 import os
-from discord import app_commands
-from discord.ext import commands
+import tempfile
 from datetime import timedelta
 from dotenv import load_dotenv
+import whisper
+import discord
+from discord import app_commands
+from discord.ext import commands
+
+# Absolute paths pour ffmpeg et ffprobe
+ffmpeg_path = r"C:\Users\romai\Downloads\ffmpeg-7.1.1-essentials_build\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
+ffprobe_path = r"C:\Users\romai\Downloads\ffmpeg-7.1.1-essentials_build\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
+
+# Force envs vars for pydud before importing
+os.environ["PATH"] = os.path.dirname(ffmpeg_path) + os.pathsep + os.environ["PATH"]
+os.environ["FFMPEG_BINARY"] = ffmpeg_path
+os.environ["FFPROBE_BINARY"] = ffprobe_path
+
+from pydub import AudioSegment  # noqa: E402
+
+AudioSegment.converter = ffmpeg_path
+AudioSegment.ffprobe = ffprobe_path
+
+
+model = whisper.load_model("small")  # base / small / medium / large
+
 
 load_dotenv()
 
@@ -70,9 +90,41 @@ async def get_last_messages(interaction: discord.Interaction, nombre: int):
 
     lines = []
     for msg in reversed(messages):
+        content = msg.content or ""
+
+        if msg.attachments:
+            for att in msg.attachments:
+                filename = att.filename.lower()
+                if filename.endswith((".ogg", ".mp3", ".wav", ".m4a")):
+                    try:
+                        # Download the attachment
+                        with tempfile.TemporaryDirectory() as tmpdir:
+                            file_path = os.path.join(tmpdir, att.filename)
+                            await att.save(file_path)
+
+                            # Convert to WAV if necessary
+                            wav_path = os.path.join(tmpdir, "converted.wav")
+                            audio = AudioSegment.from_file(file_path)
+                            audio.export(wav_path, format="wav")
+
+                            # Transcribe the audio
+                            result = model.transcribe(wav_path, language="fr")
+                            transcription = result["text"].strip()
+
+                            content += f"\n[Vocal] {att.filename} : {att.url}"
+                            content += f"\nTranscription : {transcription or '(vide)'}"
+
+                    except Exception as e:
+                        content += f"\nErreur transcription : {e}"
+
+                else:
+                    content += f"\n[Fichier] {att.filename} : {att.url}"
+
+        if not content.strip():
+            content = "[Message vide]"
+
         timestamp = (msg.created_at + timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
         author = msg.author.display_name
-        content = msg.content or "[Message vide]"
         lines.append(f"[{timestamp}] {author} : {content}")
 
     response = "\n".join(lines)
