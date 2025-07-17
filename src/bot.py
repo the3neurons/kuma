@@ -162,36 +162,35 @@ async def extract_clean_conversation(
 ) -> str:
     messages = []
     async for msg in interaction.channel.history(limit=limit + 1):
-        if msg.author != bot.user:
-            content = msg.content or ""
+        content = msg.content or ""
 
-            # Tenor links
-            tenor_links = TENOR_URL_PATTERN.findall(content)
-            for tenor_link in tenor_links:
-                gif_url = await get_tenor_gif_url(tenor_link)
-                if gif_url:
-                    desc = await describe_image_blip(gif_url)
-                    content += f"\n[Tenor] {desc}"
+        # Tenor links
+        tenor_links = TENOR_URL_PATTERN.findall(content)
+        for tenor_link in tenor_links:
+            gif_url = await get_tenor_gif_url(tenor_link)
+            if gif_url:
+                desc = await describe_image_blip(gif_url)
+                content += f"\n[Tenor] {desc}"
 
-            # Attachments
-            for att in msg.attachments:
-                fname = att.filename.lower()
+        # Attachments
+        for att in msg.attachments:
+            fname = att.filename.lower()
 
-                if fname.endswith((".ogg", ".mp3", ".wav", ".m4a")):
-                    transcription = await transcribe_audio_attachment(att.url, fname)
-                    content += f"\n[Audio] Transcription: {transcription}"
+            if fname.endswith((".ogg", ".mp3", ".wav", ".m4a")):
+                transcription = await transcribe_audio_attachment(att.url, fname)
+                content += f"\n[Audio] Transcription: {transcription}"
 
-                elif fname.endswith((".png", ".jpg", ".jpeg", ".gif")):
-                    desc = await describe_image_blip(att.url)
-                    content += f"\n[Image] Description: {desc}"
+            elif fname.endswith((".png", ".jpg", ".jpeg", ".gif")):
+                desc = await describe_image_blip(att.url)
+                content += f"\n[Image] Description: {desc}"
 
-                else:
-                    content += f"\n[Attachment] {att.filename}"
+            else:
+                content += f"\n[Attachment] {att.filename}"
 
-            if not content.strip():
-                content = "[Empty message]"
+        if not content.strip():
+            content = "[Empty message]"
 
-            messages.append(f"{msg.author.display_name}: {content.strip()}")
+        messages.append(f"{msg.author.display_name}: {content.strip()}")
 
     return "\n".join(reversed(messages[:limit]))
 
