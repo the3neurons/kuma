@@ -42,8 +42,8 @@ Le projet vise à automatiser et améliorer la communication digitale en proposa
 
 ### Flux de données
 
-1. **Entrée** : Message/image/audio depuis Discord ou Streamlit
-2. **Extraction** : OCR (Textract) pour images, transcription pour audio
+1. **Entrée** : Message/image/audio depuis Discord ou Message depuis Streamlit
+2. **Extraction** : OCR (Textract) pour images, transcription(Whisper OpenAI) pour audio
 3. **Enrichissement** : Description d'images, analyse de contenu
 4. **Traitement** : Analyse contextuelle via AWS Bedrock
 5. **Génération** : Proposition de 3 réponses personnalisées
@@ -274,7 +274,6 @@ Utilisé pour l'OCR avec détection de layout :
 
 **Solution** :
 - Extraction enrichie du contenu
-- Gestion des attachments par type MIME
 - Traitement des URLs spéciales (Tenor)
 
 ### Défi 4 : Cohérence des réponses
