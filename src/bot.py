@@ -59,6 +59,33 @@ AudioSegment.ffprobe = ffprobe_path
 # --- Utility functions ---
 
 
+def clean_and_split_answers(raw) -> list[str]:
+    if isinstance(raw, list):
+        candidates = raw
+    elif isinstance(raw, str):
+        # Split by newlines first
+        candidates = raw.strip().split("\n")
+    else:
+        raise TypeError(f"Expected str or list, got {type(raw)}")
+
+    cleaned = []
+    for line in candidates:
+        line = line.strip()
+        if not line:
+            continue
+
+        # Remove common leading formats: numbers, dashes, bullets, etc.
+        line = re.sub(r"^(?:\d+[\).\-]|[-•*])\s*", "", line)
+        # Remove Markdown-style headers like "**Answer A**:"
+        line = re.sub(r"^\*{0,2}Answer\s+[A-Z]\*{0,2}[:\-]?\s*", "", line)
+
+        if line:
+            cleaned.append(line)
+
+    # Return only the last 3 clean messages
+    return cleaned[-3:]
+
+
 async def get_tenor_gif_url(tenor_page_url: str) -> str | None:
     """Gets the direct GIF URL from a Tenor page."""
     try:
@@ -229,7 +256,9 @@ async def kuma_answer(
 
     # Step 2: call the model
     emotion_value = emotion.value if emotion.value != "default" else "neutral"
-    answers = await asyncio.to_thread(get_answers, conversation, emotion_value)
+    answers_raw = await asyncio.to_thread(get_answers, conversation, emotion_value)
+
+    answers = clean_and_split_answers(answers_raw)
 
     # Step 3: answer interface
     class AnswerView(View):
