@@ -196,7 +196,7 @@ async def extract_clean_conversation(
     return "\n".join(reversed(messages[:limit]))
 
 
-@tree.command(name="kuma-answer", description="Generate 3 answers based on an emotion.")
+@tree.command(name="kuma-answer", description="Generate answers based on an emotion.")
 @app_commands.describe(
     number="Number of messages to analyze (max 100)",
     emotion="Emotion to convey in the answer",
@@ -219,6 +219,11 @@ async def kuma_answer(
     # Step 1: retrieve and enrich the conversation
     conversation = await extract_clean_conversation(interaction, number)
 
+    # Print conversation sent to model
+    print("\n==== Conversation sent to model ====")
+    print(conversation)
+    print("====================================\n")
+
     # Step 2: call the model
     emotion_value = emotion.value if emotion.value != "default" else "neutral"
     answers = await asyncio.to_thread(get_answers, conversation, emotion_value)
@@ -234,16 +239,19 @@ async def kuma_answer(
                 ]
 
                 async def button_callback(inter: Interaction, msg=answer):
-                    await inter.response.send_message(f"💬 **{msg}**", ephemeral=True)
+                    await inter.response.send_message(
+                        f"Copy this answer:\n```{msg}```", ephemeral=True
+                    )
 
-                self.add_item(Button(label=label, style=style, custom_id=str(i)))
-                self.children[-1].callback = button_callback
+                button = Button(label=label, style=style)
+                button.callback = button_callback
+                self.add_item(button)
 
-    text = "**Here are 3 generated answers:**\n\n"
+    text = "**Here are generated answers:**\n\n"
     for idx, a in enumerate(answers):
-        text += f"**Answer {chr(65+idx)}**: {a}\n"
+        text += f"**Answer {chr(65+idx)}**:\n```\n{a}\n```\n"
 
-    text += "\n*Click on an answer to copy it.*"
+    text += "*Click a button below to copy the corresponding answer.*"
 
     await interaction.followup.send(
         content=text, view=AnswerView(answers), ephemeral=True
