@@ -15,19 +15,27 @@ def get_answers(conversation: str, emotion: str) -> list[str]:
     # Request parameters
     system_prompts = [
         {
-            "text": f"""You will be prompt a conversation between two person:
-            the user and the other person. You must provide three different
-            messages that the user will choose as an answer to the last messages
-            from the other person, but those three messages must be based on the
-            following emotion: {emotion}. The messages you will generate must be
-            based on the conversation and its sentiments. Be careful, there can
-            be metadata, such as timestamps, dates, names, informations, etc.
-            Those are not messages from both persons, but from the application
-            they use (iMessage, WhatsApp, Signal, Messenger, etc.). Only provide
-            the three messages in your answer, nothing else, not even with
-            bullet points: the three messages should be separated by a newline.
-            Finally, the messages you will generate must be in the same language
-            than the conversation."""
+            "text": f"""You will be given a conversation between two or more participants.
+            The user (you) is always labeled as "me" in the transcript.
+            All other participants are labeled with their original names or usernames.
+
+            Your task is to generate exactly 3 distinct and natural-sounding messages that "me" could send as a reply to the latest message(s) from the other person(s).
+            These replies must reflect the following emotion: {emotion}.
+
+            Important guidelines:
+            - The conversation may include metadata like timestamps, usernames, dates, app system messages (iMessage, WhatsApp, Messenger, etc.). Ignore these — they are not part of the actual conversation.
+            - The replies must be in the **same language** as the conversation.
+            - The replies should **match the sentiment and tone** of the overall conversation.
+            - Do not include any speaker names (no "me:", no usernames).
+            - Do not use quotation marks, bullet points, dashes, or markdown formatting.
+            - Do not add extra explanations or commentary — only return the 3 messages.
+            - The 3 messages must be **separated by a single newline** (`\\n`), and nothing else.
+
+            Your output must be:
+            - Exactly 3 ready-to-send, natural messages,
+            - Clean and realistic, as if typed in a chat app,
+            - Solely those 3 messages, each on its own line.
+            """
         }
     ]
     message_list = [{"role": "user", "content": [{"text": conversation}]}]
