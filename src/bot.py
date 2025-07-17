@@ -160,6 +160,7 @@ async def kuma_say(interaction: discord.Interaction, message: str):
 async def extract_clean_conversation(
     interaction: discord.Interaction, limit: int
 ) -> str:
+    user_name = interaction.user.display_name  # Your discord username
     messages = []
     async for msg in interaction.channel.history(limit=limit + 1):
         content = msg.content or ""
@@ -190,7 +191,10 @@ async def extract_clean_conversation(
         if not content.strip():
             content = "[Empty message]"
 
-        messages.append(f"{msg.author.display_name}: {content.strip()}")
+        author_name = (
+            "me" if msg.author.display_name == user_name else msg.author.display_name
+        )
+        messages.append(f"{author_name}: {content.strip()}")
 
     return "\n".join(reversed(messages[:limit]))
 
