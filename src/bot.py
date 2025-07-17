@@ -19,6 +19,8 @@ import whisper
 from transformers import BlipProcessor, BlipForConditionalGeneration
 import asyncio
 
+from answer import get_answers
+
 # --- Configuration ---
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -155,120 +157,96 @@ async def kuma_say(interaction: discord.Interaction, message: str):
         )
 
 
-@tree.command(
-    name="kuma-get-last", description="Retrieve the last messages from a channel."
-)
-@app_commands.describe(number="Number of messages to retrieve (max 100)")
-async def get_last_messages(interaction: discord.Interaction, number: int):
-    if not interaction.channel:
-        await interaction.response.send_message(
-            "Unable to retrieve the channel.", ephemeral=True
-        )
-        return
-
-    if number < 1 or number > 100:
-        await interaction.response.send_message(
-            "Choose a number between 1 and 100.", ephemeral=True
-        )
-        return
-
-    await interaction.response.defer()
-
+async def extract_clean_conversation(
+    interaction: discord.Interaction, limit: int
+) -> str:
     messages = []
-    async for msg in interaction.channel.history(limit=number + 1):
-        messages.append(msg)
+    async for msg in interaction.channel.history(limit=limit + 1):
+        if msg.author != bot.user:
+            content = msg.content or ""
 
-    # Remove the last bot message if it exists (auto)
-    if messages and messages[0].author == bot.user:
-        messages.pop(0)
+            # Tenor links
+            tenor_links = TENOR_URL_PATTERN.findall(content)
+            for tenor_link in tenor_links:
+                gif_url = await get_tenor_gif_url(tenor_link)
+                if gif_url:
+                    desc = await describe_image_blip(gif_url)
+                    content += f"\n[Tenor] {desc}"
 
-    messages = messages[:number]
-
-    lines = []
-    for msg in reversed(messages):
-        content = msg.content or ""
-
-        # Handle Tenor links (GIF page) in text
-        tenor_links = TENOR_URL_PATTERN.findall(content)
-        for tenor_link in tenor_links:
-            gif_url = await get_tenor_gif_url(tenor_link)
-            if gif_url:
-                desc = await describe_image_blip(gif_url)
-                content += f"\n[Tenor GIF] {tenor_link}\nDescription: {desc}"
-            else:
-                content += (
-                    f"\n[Tenor GIF] {tenor_link}\nDescription: unable to retrieve GIF."
-                )
-
-        # Handle attachments
-        if msg.attachments:
+            # Attachments
             for att in msg.attachments:
-                filename = att.filename.lower()
-                if filename.endswith((".ogg", ".mp3", ".wav", ".m4a")):
-                    # Audio transcription
-                    transcription = await transcribe_audio_attachment(
-                        att.url, att.filename
-                    )
-                    content += f"\n[Audio] {att.filename}: {att.url}\nTranscription: {transcription}"
+                fname = att.filename.lower()
 
-                elif filename.endswith((".png", ".jpg", ".jpeg", ".gif")):
-                    # Image/GIF description
-                    description = await describe_image_blip(att.url)
-                    content += f"\n[Image/GIF] {att.filename}: {att.url}\nDescription: {description}"
+                if fname.endswith((".ogg", ".mp3", ".wav", ".m4a")):
+                    transcription = await transcribe_audio_attachment(att.url, fname)
+                    content += f"\n[Audio] Transcription: {transcription}"
+
+                elif fname.endswith((".png", ".jpg", ".jpeg", ".gif")):
+                    desc = await describe_image_blip(att.url)
+                    content += f"\n[Image] Description: {desc}"
 
                 else:
-                    content += f"\n[File] {att.filename}: {att.url}"
+                    content += f"\n[Attachment] {att.filename}"
 
-        if not content.strip():
-            content = "[Empty message]"
+            if not content.strip():
+                content = "[Empty message]"
 
-        timestamp = (msg.created_at + timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
-        author = msg.author.display_name
-        lines.append(f"[{timestamp}] {author}: {content}")
+            messages.append(f"{msg.author.display_name}: {content.strip()}")
 
-    response = "\n".join(lines)
-
-    if len(response) > 1900:
-        with open("messages.txt", "w", encoding="utf-8") as f:
-            f.write(response)
-        await interaction.followup.send(file=discord.File("messages.txt"))
-    else:
-        await interaction.followup.send(
-            f"Here are the **{number}** last messages:\n```{response}```"
-        )
+    return "\n".join(reversed(messages[:limit]))
 
 
-@tree.command(name="kuma-answer", description="Show 3 answer suggestions to copy.")
-async def kuma_answer(interaction: Interaction):
+@tree.command(name="kuma-answer", description="Generate 3 answers based on an emotion.")
+@app_commands.describe(
+    number="Number of messages to analyze (max 100)",
+    emotion="Emotion to convey in the answer",
+)
+@app_commands.choices(
+    emotion=[
+        app_commands.Choice(name="Like the conversation's sentiment", value="default"),
+        app_commands.Choice(name="Seductive", value="seductive"),
+        app_commands.Choice(name="Aggressive", value="aggressive"),
+        app_commands.Choice(name="Funny", value="funny"),
+        app_commands.Choice(name="Professional", value="professional"),
+        app_commands.Choice(name="Opposite", value="opposite"),
+    ]
+)
+async def kuma_answer(
+    interaction: Interaction, number: int, emotion: app_commands.Choice[str]
+):
+    await interaction.response.defer(ephemeral=True)
+
+    # Step 1: retrieve and enrich the conversation
+    conversation = await extract_clean_conversation(interaction, number)
+
+    # Step 2: call the model
+    emotion_value = emotion.value if emotion.value != "default" else "neutral"
+    answers = await asyncio.to_thread(get_answers, conversation, emotion_value)
+
+    # Step 3: answer interface
     class AnswerView(View):
-        def __init__(self):
+        def __init__(self, answers_list: list[str]):
             super().__init__(timeout=60)
+            for i, answer in enumerate(answers_list):
+                label = f"Answer {chr(65 + i)}"
+                style = [ButtonStyle.primary, ButtonStyle.success, ButtonStyle.danger][
+                    i
+                ]
 
-        @discord.ui.button(label="Answer A", style=ButtonStyle.primary)
-        async def answer_a(self, interaction: Interaction, button: Button):
-            await interaction.response.send_message("Yes, of course!", ephemeral=True)
+                async def button_callback(inter: Interaction, msg=answer):
+                    await inter.response.send_message(f"💬 **{msg}**", ephemeral=True)
 
-        @discord.ui.button(label="Answer B", style=ButtonStyle.success)
-        async def answer_b(self, interaction: Interaction, button: Button):
-            await interaction.response.send_message("I'm not sure.", ephemeral=True)
+                self.add_item(Button(label=label, style=style, custom_id=str(i)))
+                self.children[-1].callback = button_callback
 
-        @discord.ui.button(label="Answer C", style=ButtonStyle.danger)
-        async def answer_c(self, interaction: Interaction, button: Button):
-            await interaction.response.send_message(
-                "No, that's not a good idea.", ephemeral=True
-            )
+    text = "**Here are 3 generated answers:**\n\n"
+    for idx, a in enumerate(answers):
+        text += f"**Answer {chr(65+idx)}**: {a}\n"
 
-    # Text displayed above the buttons
-    message = (
-        "**Here are the 3 suggested answers:**\n\n"
-        "🅰️ **Answer A**: Yes, of course!\n"
-        "🅱️ **Answer B**: I'm not sure.\n"
-        "🇨 **Answer C**: No, that's not a good idea.\n\n"
-        "*Click a button to copy the answer in private.*"
-    )
+    text += "\n*Click on an answer to copy it.*"
 
-    await interaction.response.send_message(
-        content=message, view=AnswerView(), ephemeral=True
+    await interaction.followup.send(
+        content=text, view=AnswerView(answers), ephemeral=True
     )
 
 
