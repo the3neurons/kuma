@@ -12,6 +12,8 @@ from bs4 import BeautifulSoup
 import discord
 from discord import app_commands
 from discord.ext import commands
+from discord import Interaction, ButtonStyle
+from discord.ui import Button, View
 import whisper
 
 from transformers import BlipProcessor, BlipForConditionalGeneration
@@ -156,15 +158,15 @@ async def kuma_say(interaction: discord.Interaction, message: str):
 @tree.command(
     name="kuma-get-last", description="Retrieve the last messages from a channel."
 )
-@app_commands.describe(nombre="Number of messages to retrieve (max 100)")
-async def get_last_messages(interaction: discord.Interaction, nombre: int):
+@app_commands.describe(number="Number of messages to retrieve (max 100)")
+async def get_last_messages(interaction: discord.Interaction, number: int):
     if not interaction.channel:
         await interaction.response.send_message(
             "Unable to retrieve the channel.", ephemeral=True
         )
         return
 
-    if nombre < 1 or nombre > 100:
+    if number < 1 or number > 100:
         await interaction.response.send_message(
             "Choose a number between 1 and 100.", ephemeral=True
         )
@@ -173,14 +175,14 @@ async def get_last_messages(interaction: discord.Interaction, nombre: int):
     await interaction.response.defer()
 
     messages = []
-    async for msg in interaction.channel.history(limit=nombre + 1):
+    async for msg in interaction.channel.history(limit=number + 1):
         messages.append(msg)
 
     # Remove the last bot message if it exists (auto)
     if messages and messages[0].author == bot.user:
         messages.pop(0)
 
-    messages = messages[:nombre]
+    messages = messages[:number]
 
     lines = []
     for msg in reversed(messages):
@@ -194,7 +196,9 @@ async def get_last_messages(interaction: discord.Interaction, nombre: int):
                 desc = await describe_image_blip(gif_url)
                 content += f"\n[Tenor GIF] {tenor_link}\nDescription: {desc}"
             else:
-                content += f"\n[Tenor GIF] {tenor_link}\nDescription: unable to retrieve GIF."
+                content += (
+                    f"\n[Tenor GIF] {tenor_link}\nDescription: unable to retrieve GIF."
+                )
 
         # Handle attachments
         if msg.attachments:
@@ -205,7 +209,7 @@ async def get_last_messages(interaction: discord.Interaction, nombre: int):
                     transcription = await transcribe_audio_attachment(
                         att.url, att.filename
                     )
-                    content += f"\n[Vocal] {att.filename}: {att.url}\nTranscription: {transcription}"
+                    content += f"\n[Audio] {att.filename}: {att.url}\nTranscription: {transcription}"
 
                 elif filename.endswith((".png", ".jpg", ".jpeg", ".gif")):
                     # Image/GIF description
@@ -230,8 +234,42 @@ async def get_last_messages(interaction: discord.Interaction, nombre: int):
         await interaction.followup.send(file=discord.File("messages.txt"))
     else:
         await interaction.followup.send(
-            f"Here are the **{nombre}** last messages:\n```{response}```"
+            f"Here are the **{number}** last messages:\n```{response}```"
         )
+
+
+@tree.command(name="kuma-answer", description="Show 3 answer suggestions to copy.")
+async def kuma_answer(interaction: Interaction):
+    class AnswerView(View):
+        def __init__(self):
+            super().__init__(timeout=60)
+
+        @discord.ui.button(label="Answer A", style=ButtonStyle.primary)
+        async def answer_a(self, interaction: Interaction, button: Button):
+            await interaction.response.send_message("Yes, of course!", ephemeral=True)
+
+        @discord.ui.button(label="Answer B", style=ButtonStyle.success)
+        async def answer_b(self, interaction: Interaction, button: Button):
+            await interaction.response.send_message("I'm not sure.", ephemeral=True)
+
+        @discord.ui.button(label="Answer C", style=ButtonStyle.danger)
+        async def answer_c(self, interaction: Interaction, button: Button):
+            await interaction.response.send_message(
+                "No, that's not a good idea.", ephemeral=True
+            )
+
+    # Text displayed above the buttons
+    message = (
+        "**Here are the 3 suggested answers:**\n\n"
+        "🅰️ **Answer A**: Yes, of course!\n"
+        "🅱️ **Answer B**: I'm not sure.\n"
+        "🇨 **Answer C**: No, that's not a good idea.\n\n"
+        "*Click a button to copy the answer in private.*"
+    )
+
+    await interaction.response.send_message(
+        content=message, view=AnswerView(), ephemeral=True
+    )
 
 
 token = os.getenv("DISCORD_BOT_TOKEN")
